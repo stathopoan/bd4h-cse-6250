@@ -2,18 +2,15 @@ package helper
 
 import org.apache.spark.sql.{ DataFrame, SparkSession }
 
-/**
- * @author Hang Su <hangsu@gatech.edu>,
- * @author Yu Jing <yjing43@gatech.edu>,
- */
+
 object CSVHelper {
   def loadCSVAsTable(spark: SparkSession, path: String, tableName: String): DataFrame = {
-    val data = spark.read.format("com.databricks.spark.csv").
-      option("header", "true").
-      option("multiLine", true).
-      option("mode", "DROPMALFORMED").
-      option("delimiter", ",").
-      load(path)
+    val data = spark.read
+    .option("header", "true")
+    .option("multiLine", true)
+    .option("escape", "\"")
+    .option("delimiter", ",")
+    .csv(path)
     data.createOrReplaceTempView(tableName)
     data
   }

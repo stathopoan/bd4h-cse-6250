@@ -19,6 +19,7 @@ object SparkHelper {
         .set("spark.driver.memory", "2G")
         .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
         .set("spark.kryoserializer.buffer", "24")
+        .set("spark.kryoserializer.buffer.max","1024mb")
       // .set("fs.hdfs.impl", classOf[org.apache.hadoop.hdfs.DistributedFileSystem].getName)
       // .set("fs.file.impl", classOf[org.apache.hadoop.fs.LocalFileSystem].getName)
     })
