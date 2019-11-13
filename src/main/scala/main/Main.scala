@@ -17,6 +17,8 @@ import preprocess.Preprocess
 import org.apache.spark.sql.Row
 import helper.{CSVHelper, SparkHelper}
 import model.{Diag, Note, Procedure}
+import org.apache.spark.ml.feature.Word2VecModel
+import preprocess.Preprocess.stringify
 
 
 object Main {
@@ -31,8 +33,8 @@ object Main {
     val sc = spark.sparkContext
 
     val sqlContext = spark.sqlContext
-    val (diags, prodecures, noteEvents) = loadRddRawData(spark)
 
+    val (diags, prodecures, noteEvents) = loadRddRawData(spark)
     // Union diags and procedures and save them
     val all_codes = Preprocess.getAllCodes(spark, diags, prodecures, false)
     // Tokenize summaries and save them
@@ -62,7 +64,19 @@ object Main {
 
 //    val groupedSummariesDF: DataFrame = CSVHelper.loadCSVAsTable(spark,"notes_labeled.csv","NOTES_LABELED")
     // Split to train, val, test set and make sure no patient id is shared among the sets
-    Preprocess.splitSummaries(spark, groupedSummariesDF, 0.6, 0.2, 0.2 , true)
+    val (trainSplitDF, valSplitDF, testSplitDF ) = Preprocess.splitSummaries(spark, groupedSummariesDF, 0.8, 0.1, 0.1 , true)
+
+//    val trainSplitDF: DataFrame = CSVHelper.loadCSVAsTable(spark,"train_split.csv","TRAIN_SPLIT")
+//    val valSplitDF: DataFrame = CSVHelper.loadCSVAsTable(spark,"val_split.csv","VAL_SPLIT")
+//    val testSplitDF: DataFrame = CSVHelper.loadCSVAsTable(spark,"test_split.csv","TEST_SPLIT")
+
+//    val modelW2V = Word2VecModel.load("wordEmeddingsModel") // Use that only if you have saved the model
+    val modelW2V = Preprocess.pretrainWordEmbeddings(spark,trainSplitDF,true)
+
+    // Create text to vectors to fixed length of 100 ready to be parsed
+//    Preprocess.createVectorsWithEmbeddings(spark, modelW2V, trainSplitDF, true, "train.csv")
+//    Preprocess.createVectorsWithEmbeddings(spark, modelW2V, valSplitDF, true, "val.csv")
+//    Preprocess.createVectorsWithEmbeddings(spark, modelW2V, testSplitDF, true, "test.csv")
 
 
   }

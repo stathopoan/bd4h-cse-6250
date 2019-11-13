@@ -1,7 +1,7 @@
 package preprocess
 
 import model.{Diag, Note, Procedure}
-import org.apache.spark.ml.feature.{Tokenizer, Word2Vec}
+import org.apache.spark.ml.feature.{Tokenizer, Word2Vec, Word2VecModel}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.apache.spark.sql.functions._
@@ -37,27 +37,7 @@ object Preprocess {
         .save("discharge_tokenized.csv")
     }
 
-    // Learn a mapping from words to Vectors.
-//    val word2Vec = new Word2Vec()
-//      .setInputCol("words")
-//      .setOutputCol("result")
-//      .setVectorSize(100) // 100 size vector
-//      .setMinCount(3) // the minimum number of times a token must appear to be included in the word2vec model's vocabulary
-//      .setWindowSize(5)
-//      .setMaxSentenceLength(2500) // the maximum length (in words) of each sentence in the input data. Any sentence longer than this threshold will be divided into chunks of up to maxSentenceLength size (default: 1000)
 
-
-    // Train model
-//    val modelW2V = word2Vec.fit(tokenized)
-    // Show the vector for the word chest
-//    modelW2V.getVectors.filter($"word" === "chest").show()
-
-    // Creation of embeddings for documents
-//    val result = modelW2V.transform(tokenized)
-//    result.show(false)
-
-//    result.collect().foreach { case Row(text: Seq[_], features: Vector) =>
-//      println(s"Text: [${text.mkString(", ")}] => \nVector: $features\n") }
     tokenized
   }
 
@@ -76,6 +56,11 @@ object Preprocess {
   val stringify = udf((vs: Seq[String]) => vs match {
     case null => null
     case _    => s"""${vs.mkString(" ")}"""
+  })
+
+  val stringify2 = udf((vs: Vector) => vs match {
+    case null => null
+    case _    => s"""${vs.toArray.mkString(" ")}"""
   })
 
 
@@ -169,9 +154,28 @@ object Preprocess {
         }
     }
 
-    val trainDF = groupedSummariesDF.filter(f=>trainPatientIdSet.contains(f.getString(0).toInt))
-    val valDF = groupedSummariesDF.filter(f=>valPatientIdSet.contains(f.getString(0).toInt))
-    val testDF = groupedSummariesDF.filter(f=>testPatientIdSet.contains(f.getString(0).toInt))
+    // Prepare for batching by setting the rows with less length first
+
+    var trainDF = groupedSummariesDF.filter(f=>trainPatientIdSet.contains(f.getString(0).toInt))
+    // Sort by number of words in text
+    trainDF = trainDF.withColumn("LENGTH", size(split(col("TEXT")," "))).sort($"LENGTH")
+    // Remove redundant column
+    trainDF = trainDF.drop("LENGTH")
+
+    var valDF = groupedSummariesDF.filter(f=>valPatientIdSet.contains(f.getString(0).toInt))
+    // Sort by number of words in text
+    valDF = valDF.withColumn("LENGTH", size(split(col("TEXT")," "))).sort($"LENGTH")
+    // Remove redundant column
+    valDF = valDF.drop("LENGTH")
+
+
+    var testDF = groupedSummariesDF.filter(f=>testPatientIdSet.contains(f.getString(0).toInt))
+    // Sort by number of words in text
+    testDF = testDF.withColumn("LENGTH", size(split(col("TEXT")," "))).sort($"LENGTH")
+    // Remove redundant column
+    testDF = testDF.drop("LENGTH")
+
+
 
 
     if (writeCsv){
@@ -253,6 +257,73 @@ object Preprocess {
       }
     }
     code
+  }
+
+  def pretrainWordEmbeddings(spark: SparkSession, summaries:DataFrame, writeCsv:Boolean=false): Word2VecModel ={
+    import spark.implicits._
+
+    var summariesTokenized = summaries.withColumn("TEXT",split(col("TEXT")," "))
+    summariesTokenized = summariesTokenized.drop("SUBJECT_ID", "HADM_ID", "LABELS")
+
+//    summariesTokenized.show()
+
+      //     Learn a mapping from words to Vectors.
+      val word2Vec = new Word2Vec()
+        .setInputCol("TEXT")
+        .setOutputCol("RESULT")
+        .setVectorSize(100) // 100 size vector
+        .setMinCount(3) // the minimum number of times a token must appear to be included in the word2vec model's vocabulary
+        .setWindowSize(5)
+        .setMaxSentenceLength(2500) // the maximum length (in words) of each sentence in the input data. Any sentence longer than this threshold will be divided into chunks of up to maxSentenceLength size (default: 1000)
+        .setMaxIter(2)
+
+      // Train model
+      val modelW2V = word2Vec.fit(summariesTokenized)
+
+      modelW2V.save("wordEmeddingsModel")
+
+      if (writeCsv){
+        // Write to one csv
+        val vectorsDF = modelW2V.getVectors.select("word","vector").withColumn("vector", stringify2($"vector"))
+        vectorsDF
+          .coalesce(1)
+          .write
+          .format("com.databricks.spark.csv")
+          .option("header","true")
+          .option("sep",",")
+          .mode("overwrite")
+          .save("word_embeddings.csv")
+      }
+
+      // Show the vector for the word chest
+//      modelW2V.getVectors.filter($"word" === "chest").show()
+
+    //    result.collect().foreach { case Row(text: Seq[_], features: Vector) =>
+    //      println(s"Text: [${text.mkString(", ")}] => \nVector: $features\n") }
+
+    modelW2V
+  }
+
+  def createVectorsWithEmbeddings(spark: SparkSession, modelW2V: Word2VecModel, summaries: DataFrame, writeCsv:Boolean=false, name:String="train"): Unit ={
+    import spark.implicits._
+
+    val summariesTokenized = summaries.withColumn("TEXT",split(col("TEXT")," "))
+
+    val parsedData = modelW2V.transform(summariesTokenized).withColumn("TEXT", stringify($"TEXT")).withColumn("RESULT", stringify2($"RESULT"))
+    parsedData.show(false)
+
+    if (writeCsv){
+      // Write to one csv
+      parsedData
+        .coalesce(1)
+        .write
+        .format("com.databricks.spark.csv")
+        .option("header","true")
+        .option("sep",",")
+        .mode("overwrite")
+        .save(name)
+    }
+
   }
 
 
