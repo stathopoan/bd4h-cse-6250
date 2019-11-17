@@ -128,7 +128,7 @@ object Preprocess {
   def splitSummaries( spark:SparkSession, groupedSummariesDF:DataFrame, train_percentage: Double, val_percentage:Double, test_percentage:Double, writeCsv:Boolean=false  ): (DataFrame, DataFrame, DataFrame ) ={
     import spark.implicits._
 
-    val grouped = groupedSummariesDF.groupBy("SUBJECT_ID").count().collect().map(x=>(x.getString(0),x.getLong(1)))
+    val grouped = groupedSummariesDF.groupBy("SUBJECT_ID").count().collect().map(x=>(x.getInt(0),x.getLong(1)))
     val totalEntries = groupedSummariesDF.count()
 
     var trainPatientIdSet = scala.collection.mutable.Set[Int]()

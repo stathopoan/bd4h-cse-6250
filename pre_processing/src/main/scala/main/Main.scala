@@ -64,14 +64,14 @@ object Main {
 
 //    val groupedSummariesDF: DataFrame = CSVHelper.loadCSVAsTable(spark,"notes_labeled.csv","NOTES_LABELED")
     // Split to train, val, test set and make sure no patient id is shared among the sets
-    val (trainSplitDF, valSplitDF, testSplitDF ) = Preprocess.splitSummaries(spark, groupedSummariesDF, 0.8, 0.1, 0.1 , true)
+    val (trainSplitDF, valSplitDF, testSplitDF ) = Preprocess.splitSummaries(spark, groupedSummariesDF, 0.8, 0.1, 0.1 , false)
 
 //    val trainSplitDF: DataFrame = CSVHelper.loadCSVAsTable(spark,"train_split.csv","TRAIN_SPLIT")
 //    val valSplitDF: DataFrame = CSVHelper.loadCSVAsTable(spark,"val_split.csv","VAL_SPLIT")
 //    val testSplitDF: DataFrame = CSVHelper.loadCSVAsTable(spark,"test_split.csv","TEST_SPLIT")
 
 //    val modelW2V = Word2VecModel.load("wordEmeddingsModel") // Use that only if you have saved the model
-    val modelW2V = Preprocess.pretrainWordEmbeddings(spark,trainSplitDF,true)
+//    val modelW2V = Preprocess.pretrainWordEmbeddings(spark,trainSplitDF,true)
 
     // Create text to vectors to fixed length of 100 ready to be parsed
 //    Preprocess.createVectorsWithEmbeddings(spark, modelW2V, trainSplitDF, true, "train.csv")
@@ -111,6 +111,8 @@ object Main {
       .map(m => Note( m.getString(0).toInt, m.getString(1).toInt, m.getString(2), m.getString(3), m.getString(4) ));
 
     println("Note events rows found: "+noteEvents.count())
+    println("Procedure rows found: "+procedures.count())
+    println("Diagnose rows found: "+diagnoses.count())
 
     (diagnoses, procedures, noteEvents)
   }
