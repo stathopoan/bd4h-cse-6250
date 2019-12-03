@@ -292,3 +292,13 @@ def evaluate(model, device, data_loader, criterion, print_freq=10):
                     i, len(data_loader), batch_time=batch_time, loss=losses, acc=accuracy))
 
     return losses.avg, accuracy.avg, results
+
+def load_frequency_weights(frequency_labels_path, c2ind):
+    df = pd.read_csv(frequency_labels_path, header=None, names=['label', 'frequency'])
+    indices = [c2ind[row[0]] for i, row in df.iterrows()]
+    df['indices'] = indices
+    df = df.sort_values(by=['indices'],ascending=True)
+    weights = [r[1] for i, r in df.iterrows()]
+    w = np.array(weights, dtype=np.float32)
+    w = 1.0 - w/np.sum(w)
+    return w
