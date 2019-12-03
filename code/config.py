@@ -12,7 +12,7 @@ PATH_OUTPUT = '../models/'
 
 USE_TOP50 = False
 
-NUM_EPOCHS = 30
+NUM_EPOCHS = 10
 BATCH_SIZE = 32
 USE_CUDA = True  # Set 'True' if you want to use GPU
 NUM_WORKERS = 0

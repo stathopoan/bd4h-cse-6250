@@ -136,9 +136,8 @@ if args.train:
                                                                           criterion, optimizer, epoch,
                                                                           verbose=False)
         valid_loss, valid_mac_acc, valid_mac_rec, valid_mac_pre, valid_mac_f1, \
-        valid_mic_acc, valid_mic_rec, valid_mic_pre, valid_mic_f1 = train(model, device, valid_loader,
-                                                                          criterion, optimizer, epoch,
-                                                                          verbose=True)
+        valid_mic_acc, valid_mic_rec, valid_mic_pre, valid_mic_f1 = evaluate(model, device, valid_loader,
+                                                                             criterion)
 
         train_losses.append(train_loss)
         valid_losses.append(valid_loss)
