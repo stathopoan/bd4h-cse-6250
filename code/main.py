@@ -84,18 +84,17 @@ if args.dataprep:
         pickle.dump(valid_loader, valid_loader_pkl)
 
 else:
+    if args.train:
+        with open(PATH_LOADERS + "train_loader.pkl", 'rb') as train_loader_pkl:
+            train_loader = pickle.load(train_loader_pkl)
 
-    with open(PATH_LOADERS + "train_loader.pkl", 'rb') as train_loader_pkl:
-        train_loader = pickle.load(train_loader_pkl)
+        with open(PATH_LOADERS + "valid_loader.pkl", 'rb') as valid_loader_pkl:
+            valid_loader = pickle.load(valid_loader_pkl)
 
     with open(PATH_LOADERS + "test_loader.pkl", 'rb') as test_loader_pkl:
         test_loader = pickle.load(test_loader_pkl)
 
-    with open(PATH_LOADERS + "valid_loader.pkl", 'rb') as valid_loader_pkl:
-        valid_loader = pickle.load(valid_loader_pkl)
-
-
-if args.modeltype == 'lr':
+if args.modeltype[0] == 'lr':
     save_file = 'model_lr.pth'
     if args.train:
         if USE_TOP50:
@@ -104,7 +103,7 @@ if args.modeltype == 'lr':
             model = BOWPool(len(ind2c), PATH_MY_EMBEDDINGS)
     else:
         model = torch.load(os.path.join(PATH_OUTPUT, save_file))
-elif args.modeltype == 'cnn':
+elif args.modeltype[0] == 'cnn':
     save_file = 'model_cnn.pth'
     if args.train:
         if USE_TOP50:
@@ -113,7 +112,7 @@ elif args.modeltype == 'cnn':
             model = BOWPool(len(ind2c), PATH_MY_EMBEDDINGS)
     else:
         model = torch.load(os.path.join(PATH_OUTPUT, save_file))
-elif args.modeltype == 'rnn':
+elif args.modeltype[0] == 'rnn':
     save_file = 'model_rnn.pth'
     if args.train:
         if USE_TOP50:
@@ -132,14 +131,14 @@ if args.train:
     valid_losses, valid_mac_accs, valid_mac_recs, valid_mac_pres, valid_mac_f1s = [], [], [], [], []
 
     for epoch in range(NUM_EPOCHS):
-        train_loss, train_mac_acc, train_mac_rec, train_mac_pre, train_mac_f1,\
-            train_mic_acc, train_mic_rec, train_mic_pre, train_mic_f1 = train(model, device, train_loader,
-                                                                                      criterion, optimizer, epoch,
-                                                                                      verbose=False)
-        valid_loss, valid_mac_acc, valid_mac_rec, valid_mac_pre, valid_mac_f1,\
-            valid_mic_acc, valid_mic_rec, valid_mic_pre, valid_mic_f1 = train(model, device, valid_loader,
-                                                                                      criterion, optimizer, epoch,
-                                                                                      verbose=True)
+        train_loss, train_mac_acc, train_mac_rec, train_mac_pre, train_mac_f1, \
+        train_mic_acc, train_mic_rec, train_mic_pre, train_mic_f1 = train(model, device, train_loader,
+                                                                          criterion, optimizer, epoch,
+                                                                          verbose=False)
+        valid_loss, valid_mac_acc, valid_mac_rec, valid_mac_pre, valid_mac_f1, \
+        valid_mic_acc, valid_mic_rec, valid_mic_pre, valid_mic_f1 = train(model, device, valid_loader,
+                                                                          criterion, optimizer, epoch,
+                                                                          verbose=True)
 
         train_losses.append(train_loss)
         valid_losses.append(valid_loss)
@@ -155,5 +154,5 @@ if args.train:
     plot_learning_curves(train_losses, valid_losses, train_mac_accs, valid_mac_accs)
 
 best_model = torch.load(os.path.join(PATH_OUTPUT, save_file))
-test_loss, test_mac_acc, test_mac_rec, test_mac_pre, test_mac_f1,\
-    test_mic_acc, test_mic_rec, test_mic_pre, test_mic_f1 = evaluate(best_model, device, test_loader, criterion)
+test_loss, test_mac_acc, test_mac_rec, test_mac_pre, test_mac_f1, \
+test_mic_acc, test_mic_rec, test_mic_pre, test_mic_f1 = evaluate(best_model, device, test_loader, criterion)
