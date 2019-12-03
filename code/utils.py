@@ -185,6 +185,32 @@ def macro_f1(yhat, y):
     return f1
 
 
+# Reference: https://github.com/jamesmullenbach/caml-mimic/evaluation.py
+def micro_accuracy(yhatmic, ymic):
+    return intersect_size(yhatmic, ymic, 0) / union_size(yhatmic, ymic, 0)
+
+
+# Reference: https://github.com/jamesmullenbach/caml-mimic/evaluation.py
+def micro_precision(yhatmic, ymic):
+    return intersect_size(yhatmic, ymic, 0) / yhatmic.sum(axis=0)
+
+
+# Reference: https://github.com/jamesmullenbach/caml-mimic/evaluation.py
+def micro_recall(yhatmic, ymic):
+    return intersect_size(yhatmic, ymic, 0) / ymic.sum(axis=0)
+
+
+# Reference: https://github.com/jamesmullenbach/caml-mimic/evaluation.py
+def micro_f1(yhatmic, ymic):
+    prec = micro_precision(yhatmic, ymic)
+    rec = micro_recall(yhatmic, ymic)
+    if prec + rec == 0:
+        f1 = 0.
+    else:
+        f1 = 2 * (prec * rec) / (prec + rec)
+    return f1
+
+
 # Reference: CSE6250 HW5
 def train(model, device, data_loader, criterion, optimizer, epoch, print_freq=10, verbose=True):
     batch_time = AverageMeter()
@@ -194,6 +220,10 @@ def train(model, device, data_loader, criterion, optimizer, epoch, print_freq=10
     mac_rec = AverageMeter()
     mac_pre = AverageMeter()
     mac_f1 = AverageMeter()
+    mic_acc = AverageMeter()
+    mic_rec = AverageMeter()
+    mic_pre = AverageMeter()
+    mic_f1 = AverageMeter()
 
     model.train()
 
@@ -227,6 +257,10 @@ def train(model, device, data_loader, criterion, optimizer, epoch, print_freq=10
         mac_rec.update(macro_recall(yhat, y).item(), target.size(0))
         mac_pre.update(macro_precision(yhat, y).item(), target.size(0))
         mac_f1.update(macro_f1(yhat, y), target.size(0))
+        mic_acc.update(micro_accuracy(yhat.ravel(), y.ravel()).item(), target.size(0))
+        mic_rec.update(micro_recall(yhat.ravel(), y.ravel()).item(), target.size(0))
+        mic_pre.update(micro_precision(yhat.ravel(), y.ravel()).item(), target.size(0))
+        mic_f1.update(micro_f1(yhat.ravel(), y.ravel()), target.size(0))
 
         if i % print_freq == 0 and verbose:
             print('Epoch: [{0}][{1}/{2}]\t'
@@ -236,7 +270,11 @@ def train(model, device, data_loader, criterion, optimizer, epoch, print_freq=10
                   'Macro Accuracy {mac_acc.val:.3f} ({mac_acc.avg:.3f})\t'
                   'Macro Recall {mac_rec.val:.3f} ({mac_rec.avg:.3f})\t'
                   'Macro Precision {mac_pre.val:.3f} ({mac_pre.avg:.3f})\t'
-                  'Macro F1 {mac_f1.val:.3f} ({mac_f1.avg:.3f})\t'.format(epoch,
+                  'Macro F1 {mac_f1.val:.3f} ({mac_f1.avg:.3f})\t'
+                  'Micro Accuracy {mic_acc.val:.3f} ({mic_acc.avg:.3f})\t'
+                  'Micro Recall {mic_rec.val:.3f} ({mic_rec.avg:.3f})\t'
+                  'Micro Precision {mic_pre.val:.3f} ({mic_pre.avg:.3f})\t'
+                  'Micro F1 {mic_f1.val:.3f} ({mic_f1.avg:.3f})\t'.format(epoch,
                                                                           i,
                                                                           len(data_loader),
                                                                           batch_time=batch_time,
@@ -245,16 +283,28 @@ def train(model, device, data_loader, criterion, optimizer, epoch, print_freq=10
                                                                           mac_acc=mac_acc,
                                                                           mac_pre=mac_pre,
                                                                           mac_rec=mac_rec,
-                                                                          mac_f1=mac_f1))
+                                                                          mac_f1=mac_f1,
+                                                                          mic_acc=mic_acc,
+                                                                          mic_pre=mic_pre,
+                                                                          mic_rec=mic_rec,
+                                                                          mic_f1=mic_f1))
 
-    return losses.avg, mac_acc.avg, mac_pre.avg, mac_rec.avg, mac_f1.avg
+    return losses.avg, mac_acc.avg, mac_pre.avg, mac_rec.avg, mac_f1.avg, mic_acc.avg, mic_pre.avg, mic_rec.avg, mic_f1.avg
 
 
 # Reference: CSE6250 HW5
 def evaluate(model, device, data_loader, criterion, print_freq=10):
     batch_time = AverageMeter()
+    data_time = AverageMeter()
     losses = AverageMeter()
-    accuracy = AverageMeter()
+    mac_acc = AverageMeter()
+    mac_rec = AverageMeter()
+    mac_pre = AverageMeter()
+    mac_f1 = AverageMeter()
+    mic_acc = AverageMeter()
+    mic_rec = AverageMeter()
+    mic_pre = AverageMeter()
+    mic_f1 = AverageMeter()
 
     results = []
 
@@ -278,27 +328,55 @@ def evaluate(model, device, data_loader, criterion, print_freq=10):
             end = time.time()
 
             losses.update(loss.item(), target.size(0))
-            accuracy.update(compute_batch_accuracy_multiclass(output, target).item(), target.size(0))
+            y = target.cpu().detach().numpy()
+            yhat = torch.sigmoid(output).cpu().detach().round().numpy()
+            mac_acc.update(macro_accuracy(yhat, y).item(), target.size(0))
+            mac_rec.update(macro_recall(yhat, y).item(), target.size(0))
+            mac_pre.update(macro_precision(yhat, y).item(), target.size(0))
+            mac_f1.update(macro_f1(yhat, y), target.size(0))
+            mic_acc.update(micro_accuracy(yhat.ravel(), y.ravel()).item(), target.size(0))
+            mic_rec.update(micro_recall(yhat.ravel(), y.ravel()).item(), target.size(0))
+            mic_pre.update(micro_precision(yhat.ravel(), y.ravel()).item(), target.size(0))
+            mic_f1.update(micro_f1(yhat.ravel(), y.ravel()), target.size(0))
 
-            y_true = target.detach().to('cpu').numpy().tolist()
-            y_pred = output.detach().to('cpu').max(1)[1].numpy().tolist()
-            results.extend(list(zip(y_true, y_pred)))
+            # y_true = target.detach().to('cpu').numpy()
+            # y_pred = yhat
+            # results.extend(list(zip(y_true, y_pred)))
 
             if i % print_freq == 0:
                 print('Test: [{0}/{1}]\t'
                       'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                       'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                      'Accuracy {acc.val:.3f} ({acc.avg:.3f})'.format(
-                    i, len(data_loader), batch_time=batch_time, loss=losses, acc=accuracy))
+                      'Macro Accuracy {mac_acc.val:.3f} ({mac_acc.avg:.3f})\t'
+                      'Macro Recall {mac_rec.val:.3f} ({mac_rec.avg:.3f})\t'
+                      'Macro Precision {mac_pre.val:.3f} ({mac_pre.avg:.3f})\t'
+                      'Macro F1 {mac_f1.val:.3f} ({mac_f1.avg:.3f})\t'
+                      'Micro Accuracy {mic_acc.val:.3f} ({mic_acc.avg:.3f})\t'
+                      'Micro Recall {mic_rec.val:.3f} ({mic_rec.avg:.3f})\t'
+                      'Micro Precision {mic_pre.val:.3f} ({mic_pre.avg:.3f})\t'
+                      'Micro F1 {mic_f1.val:.3f} ({mic_f1.avg:.3f})\t'.format(i,
+                                                                              len(data_loader),
+                                                                              batch_time=batch_time,
+                                                                              data_time=data_time,
+                                                                              loss=losses,
+                                                                              mac_acc=mac_acc,
+                                                                              mac_pre=mac_pre,
+                                                                              mac_rec=mac_rec,
+                                                                              mac_f1=mac_f1,
+                                                                              mic_acc=mic_acc,
+                                                                              mic_pre=mic_pre,
+                                                                              mic_rec=mic_rec,
+                                                                              mic_f1=mic_f1))
 
-    return losses.avg, accuracy.avg, results
+    return losses.avg, mac_acc.avg, mac_pre.avg, mac_rec.avg, mac_f1.avg, mic_acc.avg, mic_pre.avg, mic_rec.avg, mic_f1.avg
+
 
 def load_frequency_weights(frequency_labels_path, c2ind):
     df = pd.read_csv(frequency_labels_path, header=None, names=['label', 'frequency'])
     indices = [c2ind[row[0]] for i, row in df.iterrows()]
     df['indices'] = indices
-    df = df.sort_values(by=['indices'],ascending=True)
+    df = df.sort_values(by=['indices'], ascending=True)
     weights = [r[1] for i, r in df.iterrows()]
     w = np.array(weights, dtype=np.float32)
-    w = 1.0 - w/np.sum(w)
+    w = 1.0 - w / np.sum(w)
     return w

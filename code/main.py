@@ -11,7 +11,6 @@ from my_datasets import WordsWithLabelDataset, visit_collate_fn
 from models import *
 from config import *
 import pickle
-import argparse
 from plots import *
 
 # Compute dictionaries. Word to index and vice versa.
@@ -32,20 +31,9 @@ ind2c_filtered = {}
 for i, j in c2ind_filtered.items():
     ind2c_filtered[j] = i
 
-# initiate the parser
-parser = argparse.ArgumentParser()
-parser.add_argument("-dp", "--dataprep", help="run data prep", action="store_true")
-parser.add_argument("-m", "--modeltype", help="choose model type", nargs=1, choices=['lr', 'cnn', 'rnn'], default='lr')
-
 # read arguments from the command line
 args = parser.parse_args()
-
-if args.modeltype == 'lr':
-    save_file = 'model_lr.pth'
-elif args.modeltype == 'cnn':
-    save_file = 'model_cnn.pth'
-elif args.modeltype == 'rnn':
-    save_file = 'model_rnn.pth'
+print(args)
 
 if args.dataprep:
 
@@ -106,40 +94,66 @@ else:
     with open(PATH_LOADERS + "valid_loader.pkl", 'rb') as valid_loader_pkl:
         valid_loader = pickle.load(valid_loader_pkl)
 
-device = torch.device("cuda" if torch.cuda.is_available() and USE_CUDA else "cpu")
-torch.manual_seed(1)
-if device == "cuda":
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
 
-model = BOWPool(len(ind2c_filtered), PATH_MY_EMBEDDINGS)
-criterion = nn.BCEWithLogitsLoss()
-optimizer = optim.Adam(model.parameters())
+if args.modeltype == 'lr':
+    save_file = 'model_lr.pth'
+    if args.train:
+        if USE_TOP50:
+            model = BOWPool(len(ind2c_filtered), PATH_MY_EMBEDDINGS)
+        else:
+            model = BOWPool(len(ind2c), PATH_MY_EMBEDDINGS)
+    else:
+        model = torch.load(os.path.join(PATH_OUTPUT, save_file))
+elif args.modeltype == 'cnn':
+    save_file = 'model_cnn.pth'
+    if args.train:
+        if USE_TOP50:
+            model = BOWPool(len(ind2c_filtered), PATH_MY_EMBEDDINGS)
+        else:
+            model = BOWPool(len(ind2c), PATH_MY_EMBEDDINGS)
+    else:
+        model = torch.load(os.path.join(PATH_OUTPUT, save_file))
+elif args.modeltype == 'rnn':
+    save_file = 'model_rnn.pth'
+    if args.train:
+        if USE_TOP50:
+            model = BOWPool(len(ind2c_filtered), PATH_MY_EMBEDDINGS)
+        else:
+            model = BOWPool(len(ind2c), PATH_MY_EMBEDDINGS)
+    else:
+        model = torch.load(os.path.join(PATH_OUTPUT, save_file))
 
-model.to(device)
-criterion.to(device)
+if args.train:
+    optimizer = optim.Adam(model.parameters())
+    model.to(device)
+    criterion.to(device)
+    best_val_acc = 0.0
+    train_losses, train_mac_accs, train_mac_recs, train_mac_pres, train_mac_f1s = [], [], [], [], []
+    valid_losses, valid_mac_accs, valid_mac_recs, valid_mac_pres, valid_mac_f1s = [], [], [], [], []
 
-best_val_acc = 0.0
-train_losses, train_mac_accs, train_mac_recs, train_mac_pres, train_mac_f1s = [], [], [], [], []
-valid_losses, valid_mac_accs, valid_mac_recs, valid_mac_pres, valid_mac_f1s = [], [], [], [], []
+    for epoch in range(NUM_EPOCHS):
+        train_loss, train_mac_acc, train_mac_rec, train_mac_pre, train_mac_f1,\
+            train_mic_acc, train_mic_rec, train_mic_pre, train_mic_f1 = train(model, device, train_loader,
+                                                                                      criterion, optimizer, epoch,
+                                                                                      verbose=False)
+        valid_loss, valid_mac_acc, valid_mac_rec, valid_mac_pre, valid_mac_f1,\
+            valid_mic_acc, valid_mic_rec, valid_mic_pre, valid_mic_f1 = train(model, device, valid_loader,
+                                                                                      criterion, optimizer, epoch,
+                                                                                      verbose=True)
 
-for epoch in range(NUM_EPOCHS):
-    train_loss, train_mac_acc, train_mac_rec, train_mac_pre, train_mac_f1 = train(model, device, train_loader,
-                                                                                  criterion, optimizer, epoch,
-                                                                                  verbose=False)
-    valid_loss, valid_mac_acc, valid_mac_rec, valid_mac_pre, valid_mac_f1 = train(model, device, valid_loader,
-                                                                                  criterion, optimizer, epoch,
-                                                                                  verbose=True)
+        train_losses.append(train_loss)
+        valid_losses.append(valid_loss)
 
-    train_losses.append(train_loss)
-    valid_losses.append(valid_loss)
+        train_mac_accs.append(train_mac_acc)
+        valid_mac_accs.append(valid_mac_acc)
 
-    train_mac_accs.append(train_mac_acc)
-    valid_mac_accs.append(valid_mac_acc)
+        is_best = valid_mac_acc > best_val_acc  # let's keep the model that has the best accuracy, but you can also use another metric.
+        if is_best:
+            best_val_acc = valid_mac_acc
+            torch.save(model, os.path.join(PATH_OUTPUT, save_file))
 
-    is_best = valid_mac_acc > best_val_acc  # let's keep the model that has the best accuracy, but you can also use another metric.
-    if is_best:
-        best_val_acc = valid_mac_acc
-        torch.save(model, os.path.join(PATH_OUTPUT, save_file))
+    plot_learning_curves(train_losses, valid_losses, train_mac_accs, valid_mac_accs)
 
-plot_learning_curves(train_losses, valid_losses, train_mac_accs, valid_mac_accs)
+best_model = torch.load(os.path.join(PATH_OUTPUT, save_file))
+test_loss, test_mac_acc, test_mac_rec, test_mac_pre, test_mac_f1,\
+    test_mic_acc, test_mic_rec, test_mic_pre, test_mic_f1 = evaluate(best_model, device, test_loader, criterion)
