@@ -10,7 +10,7 @@ PATH_TEST_SET = "../data/top_50/test_split.csv"
 PATH_TEST_SET_50 = "../data/top_50/top_50_test_split.csv"
 TRAIN_VAL_TEST_PATH = "../data/top_50/train_split.csv"
 TRAIN_VAL_TEST_PATH_50 = "../data/top_50/top_50_train_split.csv"
-PATH_TOP50_CODES = '../data/TOP_50_CODES.csv'
+PATH_TOP50_CODES = '../data/top_50/TOP_50_CODES.csv'
 PATH_LOADERS = '../data/'
 PATH_OUTPUT = '../models/'
 
