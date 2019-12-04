@@ -2,3 +2,8 @@
 *.pkl
 *.tar
 *.gz
+.idea/vcs.xml
+.idea/modules.xml
+.idea/misc.xml
+.idea/bd4h-cse-6250.iml
+.idea/inspectionProfiles/profiles_settings.xml
