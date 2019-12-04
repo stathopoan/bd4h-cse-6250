@@ -2,15 +2,19 @@ import argparse
 import torch
 
 PATH_MY_EMBEDDINGS = "../data/word_embeddings.csv"
-PATH_VAL_SET = "../data/top_50/top_50_val_split.csv"
-PATH_TRAIN_SET = "../data/top_50/top_50_train_split.csv"
-PATH_TEST_SET = "../data/test_split.csv"
-TRAIN_VAL_TEST_PATH = "../data/top_50/top_50_train_split.csv"
+PATH_VAL_SET = "../data/top_50/val_split.csv"
+PATH_VAL_SET_50 = "../data/top_50/top_50_val_split.csv"
+PATH_TRAIN_SET = "../data/top_50/train_split.csv"
+PATH_TRAIN_SET_50 = "../data/top_50/top_50_train_split.csv"
+PATH_TEST_SET = "../data/top_50/test_split.csv"
+PATH_TEST_SET_50 = "../data/top_50/top_50_test_split.csv"
+TRAIN_VAL_TEST_PATH = "../data/top_50/train_split.csv"
+TRAIN_VAL_TEST_PATH_50 = "../data/top_50/top_50_train_split.csv"
 PATH_TOP50_CODES = '../data/TOP_50_CODES.csv'
 PATH_LOADERS = '../data/'
 PATH_OUTPUT = '../models/'
 
-USE_TOP50 = False
+USE_TOP50 = True
 
 NUM_EPOCHS = 10
 BATCH_SIZE = 32

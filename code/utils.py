@@ -6,6 +6,9 @@ import os
 import time
 import torch
 from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import roc_curve, auc
+
+from plots import plot_roc_curve
 
 DESC_CODES_PATH = "../data"
 
@@ -211,19 +214,72 @@ def micro_f1(yhatmic, ymic):
     return f1
 
 
+# Reference: https://github.com/jamesmullenbach/caml-mimic/evaluation.py
+def inst_precision(yhat, y):
+    num = intersect_size(yhat, y, 1) / yhat.sum(axis=1)
+    # correct for divide-by-zeros
+    num[np.isnan(num)] = 0.
+    return np.mean(num)
+
+
+# Reference: https://github.com/jamesmullenbach/caml-mimic/evaluation.py
+def inst_recall(yhat, y):
+    num = intersect_size(yhat, y, 1) / y.sum(axis=1)
+    # correct for divide-by-zeros
+    num[np.isnan(num)] = 0.
+    return np.mean(num)
+
+
+# Reference: https://github.com/jamesmullenbach/caml-mimic/evaluation.py
+def inst_f1(yhat, y):
+    prec = inst_precision(yhat, y)
+    rec = inst_recall(yhat, y)
+    f1 = 2 * (prec * rec) / (prec + rec)
+    return f1
+
+# Reference: https://github.com/jamesmullenbach/caml-mimic/evaluation.py
+def auc_metrics(yhat_raw, y, ymic):
+    if yhat_raw.shape[0] <= 1:
+        return
+    fpr = {}
+    tpr = {}
+    roc_auc = {}
+    #get AUC for each label individually
+    relevant_labels = []
+    auc_labels = {}
+    for i in range(y.shape[1]):
+        #only if there are true positives for this label
+        if y[:,i].sum() > 0:
+            fpr[i], tpr[i], _ = roc_curve(y[:,i], yhat_raw[:,i])
+            if len(fpr[i]) > 1 and len(tpr[i]) > 1:
+                auc_score = auc(fpr[i], tpr[i])
+                if not np.isnan(auc_score):
+                    auc_labels["auc_%d" % i] = auc_score
+                    relevant_labels.append(i)
+
+    #macro-AUC: just average the auc scores
+    aucs = []
+    for i in relevant_labels:
+        aucs.append(auc_labels['auc_%d' % i])
+    roc_auc['auc_macro'] = np.mean(aucs)
+
+    #micro-AUC: just look at each individual prediction
+    yhatmic = yhat_raw.ravel()
+    fpr["micro"], tpr["micro"], _ = roc_curve(ymic, yhatmic)
+    roc_auc["auc_micro"] = auc(fpr["micro"], tpr["micro"])
+
+    return roc_auc
+
+
 # Reference: CSE6250 HW5
 def train(model, device, data_loader, criterion, optimizer, epoch, print_freq=10, verbose=True):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
-    mac_acc = AverageMeter()
-    mac_rec = AverageMeter()
-    mac_pre = AverageMeter()
-    mac_f1 = AverageMeter()
-    mic_acc = AverageMeter()
-    mic_rec = AverageMeter()
-    mic_pre = AverageMeter()
-    mic_f1 = AverageMeter()
+
+    y_hats = []
+    y_all = []
+    yhat_raws = []
 
     model.train()
 
@@ -252,61 +308,83 @@ def train(model, device, data_loader, criterion, optimizer, epoch, print_freq=10
 
         losses.update(loss.item(), target.size(0))
         y = target.cpu().detach().numpy()
-        yhat = torch.nn.functional.sigmoid(output).cpu().detach().round().numpy()
-        mac_acc.update(macro_accuracy(yhat, y).item(), target.size(0))
-        mac_rec.update(macro_recall(yhat, y).item(), target.size(0))
-        mac_pre.update(macro_precision(yhat, y).item(), target.size(0))
-        mac_f1.update(macro_f1(yhat, y), target.size(0))
-        mic_acc.update(micro_accuracy(yhat.ravel(), y.ravel()).item(), target.size(0))
-        mic_rec.update(micro_recall(yhat.ravel(), y.ravel()).item(), target.size(0))
-        mic_pre.update(micro_precision(yhat.ravel(), y.ravel()).item(), target.size(0))
-        mic_f1.update(micro_f1(yhat.ravel(), y.ravel()), target.size(0))
+        yhat = torch.sigmoid(output).cpu().detach().round().numpy()
+        yhat_raw = torch.sigmoid(output).cpu().detach().numpy()
+        y_all.append(y)
+        y_hats.append(yhat)
+        yhat_raws.append(yhat_raw)
+        f1 = inst_f1(yhat, y)
 
         if i % print_freq == 0 and verbose:
             print('Epoch: [{0}][{1}/{2}]\t'
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
                   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                  'Macro Accuracy {mac_acc.val:.3f} ({mac_acc.avg:.3f})\t'
-                  'Macro Recall {mac_rec.val:.3f} ({mac_rec.avg:.3f})\t'
-                  'Macro Precision {mac_pre.val:.3f} ({mac_pre.avg:.3f})\t'
-                  'Macro F1 {mac_f1.val:.3f} ({mac_f1.avg:.3f})\t'
-                  'Micro Accuracy {mic_acc.val:.3f} ({mic_acc.avg:.3f})\t'
-                  'Micro Recall {mic_rec.val:.3f} ({mic_rec.avg:.3f})\t'
-                  'Micro Precision {mic_pre.val:.3f} ({mic_pre.avg:.3f})\t'
-                  'Micro F1 {mic_f1.val:.3f} ({mic_f1.avg:.3f})\t'.format(epoch,
-                                                                          i,
-                                                                          len(data_loader),
-                                                                          batch_time=batch_time,
-                                                                          data_time=data_time,
-                                                                          loss=losses,
-                                                                          mac_acc=mac_acc,
-                                                                          mac_pre=mac_pre,
-                                                                          mac_rec=mac_rec,
-                                                                          mac_f1=mac_f1,
-                                                                          mic_acc=mic_acc,
-                                                                          mic_pre=mic_pre,
-                                                                          mic_rec=mic_rec,
-                                                                          mic_f1=mic_f1))
+                  'F1 {f1:.3f} \t'.format(epoch,
+                                          i,
+                                          len(data_loader),
+                                          batch_time=batch_time,
+                                          data_time=data_time,
+                                          loss=losses,
+                                          f1=f1))
 
-    return losses.avg, mac_acc.avg, mac_pre.avg, mac_rec.avg, mac_f1.avg, mic_acc.avg, mic_pre.avg, mic_rec.avg, mic_f1.avg
+    y_hats = np.concatenate(y_hats, axis=0)
+    y_all = np.concatenate(y_all, axis=0)
+    yhat_raws = np.concatenate(yhat_raws, axis=0)
+
+    mac_acc = macro_accuracy(y_hats, y_all)
+    mac_rec = macro_recall(y_hats, y_all)
+    mac_pre = macro_precision(y_hats, y_all)
+    mic_acc = micro_accuracy(y_hats.ravel(), y_all.ravel())
+    mic_rec = micro_recall(y_hats.ravel(), y_all.ravel())
+    mic_pre = micro_precision(y_hats.ravel(), y_all.ravel())
+    mic_f1 = micro_f1(y_hats.ravel(), y_all.ravel())
+    mac_f1 = macro_f1(y_hats, y_all)
+    auc_dict = auc_metrics(yhat_raws, y_all, y_all.ravel())
+
+    print('Epoch: [{0}] \t'
+          'Train: [{1}] \t'
+          'Time {batch_time.avg:.3f}\t'
+          'Data {data_time.avg:.3f}\t'
+          'Loss {loss.avg:.4f} \t'
+          'Macro Accuracy {mac_acc:.3f} \t'
+          'Macro Recall {mac_rec:.3f} \t'
+          'Macro Precision {mac_pre:.3f} \t'
+          'Macro F1 {mac_f1:.3f} \t'
+          'Macro AUC {mac_auc:.3f} \t'
+          'Micro Accuracy {mic_acc:.3f} \t'
+          'Micro Recall {mic_rec:.3f} \t'
+          'Micro Precision {mic_pre:.3f} \t'
+          'Micro F1 {mic_f1:.3f} \t'
+          'Micro AUC {auc_micro:.3f} \t'.format(
+        epoch,
+        len(data_loader),
+        batch_time=batch_time,
+        data_time=data_time,
+        loss=losses,
+        mac_acc=mac_acc,
+        mac_pre=mac_pre,
+        mac_rec=mac_rec,
+        mac_f1=mac_f1,
+        mac_auc=auc_dict['auc_macro'],
+        mic_acc=mic_acc,
+        mic_pre=mic_pre,
+        mic_rec=mic_rec,
+        mic_f1=mic_f1,
+        auc_micro=auc_dict['auc_micro']))
+
+    return losses.avg, mac_acc, mac_pre, mac_rec, mac_f1, mic_acc, mic_pre, mic_rec, mic_f1, auc_dict['auc_macro']
 
 
 # Reference: CSE6250 HW5
-def evaluate(model, device, data_loader, criterion, print_freq=10):
+def evaluate(model, device, data_loader, criterion, print_freq=10, verbose=True):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
-    mac_acc = AverageMeter()
-    mac_rec = AverageMeter()
-    mac_pre = AverageMeter()
-    mac_f1 = AverageMeter()
-    mic_acc = AverageMeter()
-    mic_rec = AverageMeter()
-    mic_pre = AverageMeter()
-    mic_f1 = AverageMeter()
 
-    results = []
+    y_hats = []
+    y_all = []
+    yhat_raws = []
 
     model.eval()
 
@@ -329,46 +407,61 @@ def evaluate(model, device, data_loader, criterion, print_freq=10):
 
             losses.update(loss.item(), target.size(0))
             y = target.cpu().detach().numpy()
+            y_all.append(y)
             yhat = torch.sigmoid(output).cpu().detach().round().numpy()
-            mac_acc.update(macro_accuracy(yhat, y).item(), target.size(0))
-            mac_rec.update(macro_recall(yhat, y).item(), target.size(0))
-            mac_pre.update(macro_precision(yhat, y).item(), target.size(0))
-            mac_f1.update(macro_f1(yhat, y), target.size(0))
-            mic_acc.update(micro_accuracy(yhat.ravel(), y.ravel()).item(), target.size(0))
-            mic_rec.update(micro_recall(yhat.ravel(), y.ravel()).item(), target.size(0))
-            mic_pre.update(micro_precision(yhat.ravel(), y.ravel()).item(), target.size(0))
-            mic_f1.update(micro_f1(yhat.ravel(), y.ravel()), target.size(0))
+            y_hats.append(yhat)
+            yhat_raw = torch.sigmoid(output).cpu().detach().numpy()
+            yhat_raws.append(yhat_raw)
 
-            # y_true = target.detach().to('cpu').numpy()
-            # y_pred = yhat
-            # results.extend(list(zip(y_true, y_pred)))
-
-            if i % print_freq == 0:
+            if i % print_freq == 0 and verbose:
                 print('Test: [{0}/{1}]\t'
                       'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                      'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                      'Macro Accuracy {mac_acc.val:.3f} ({mac_acc.avg:.3f})\t'
-                      'Macro Recall {mac_rec.val:.3f} ({mac_rec.avg:.3f})\t'
-                      'Macro Precision {mac_pre.val:.3f} ({mac_pre.avg:.3f})\t'
-                      'Macro F1 {mac_f1.val:.3f} ({mac_f1.avg:.3f})\t'
-                      'Micro Accuracy {mic_acc.val:.3f} ({mic_acc.avg:.3f})\t'
-                      'Micro Recall {mic_rec.val:.3f} ({mic_rec.avg:.3f})\t'
-                      'Micro Precision {mic_pre.val:.3f} ({mic_pre.avg:.3f})\t'
-                      'Micro F1 {mic_f1.val:.3f} ({mic_f1.avg:.3f})\t'.format(i,
-                                                                              len(data_loader),
-                                                                              batch_time=batch_time,
-                                                                              data_time=data_time,
-                                                                              loss=losses,
-                                                                              mac_acc=mac_acc,
-                                                                              mac_pre=mac_pre,
-                                                                              mac_rec=mac_rec,
-                                                                              mac_f1=mac_f1,
-                                                                              mic_acc=mic_acc,
-                                                                              mic_pre=mic_pre,
-                                                                              mic_rec=mic_rec,
-                                                                              mic_f1=mic_f1))
+                      'Loss {loss.val:.4f} ({loss.avg:.4f})\t'.format(i, len(data_loader),
+                                                                      batch_time=batch_time,
+                                                                      data_time=data_time,
+                                                                      loss=losses,
+                                                                      ))
+    y_hats = np.concatenate(y_hats, axis=0)
+    y_all = np.concatenate(y_all, axis=0)
+    yhat_raws = np.concatenate(yhat_raws, axis=0)
 
-    return losses.avg, mac_acc.avg, mac_pre.avg, mac_rec.avg, mac_f1.avg, mic_acc.avg, mic_pre.avg, mic_rec.avg, mic_f1.avg
+    mac_acc = macro_accuracy(y_hats, y_all)
+    mac_rec = macro_recall(y_hats, y_all)
+    mac_pre = macro_precision(y_hats, y_all)
+    mic_acc = micro_accuracy(y_hats.ravel(), y_all.ravel())
+    mic_rec = micro_recall(y_hats.ravel(), y_all.ravel())
+    mic_pre = micro_precision(y_hats.ravel(), y_all.ravel())
+    mic_f1 = micro_f1(y_hats.ravel(), y_all.ravel())
+    mac_f1 = macro_f1(y_hats, y_all)
+    auc_dict = auc_metrics(yhat_raws, y_all, y_all.ravel())
+
+    print('Test: \t'
+          'Loss {loss.avg:.4f} \t'
+          'Macro Accuracy {mac_acc:.3f} \t'
+          'Macro Recall {mac_rec:.3f} \t'
+          'Macro Precision {mac_pre:.3f} \t'
+          'Macro F1 {mac_f1:.3f} \t'
+          'Macro AUC {mac_auc:.3f} \t'
+          'Micro Accuracy {mic_acc:.3f} \t'
+          'Micro Recall {mic_rec:.3f} \t'
+          'Micro Precision {mic_pre:.3f} \t'
+          'Micro F1 {mic_f1:.3f} \t'
+          'Micro AUC {auc_micro:.3f} \t'.format(
+        len(data_loader),
+        data_time=data_time,
+        loss=losses,
+        mac_acc=mac_acc,
+        mac_pre=mac_pre,
+        mac_rec=mac_rec,
+        mac_f1=mac_f1,
+        mac_auc = auc_dict['auc_macro'],
+        mic_acc=mic_acc,
+        mic_pre=mic_pre,
+        mic_rec=mic_rec,
+        mic_f1=mic_f1,
+        auc_micro=auc_dict['auc_micro']))
+
+    return losses.avg, mac_acc, mac_pre, mac_rec, mac_f1, mic_acc, mic_pre, mic_rec, mic_f1, auc_dict['auc_macro'], yhat_raws, y_all
 
 
 def load_frequency_weights(frequency_labels_path, c2ind):
