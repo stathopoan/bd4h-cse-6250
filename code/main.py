@@ -12,6 +12,7 @@ from models import *
 from config import *
 import pickle
 from plots import *
+from pytorchtools import EarlyStopping
 
 # Compute dictionaries. Word to index and vice versa.
 ind2w, w2ind = get_words_to_indexes_dictionaries(PATH_MY_EMBEDDINGS)
@@ -159,10 +160,11 @@ elif args.modeltype == 'vanilla_cnn':
         model = torch.load(os.path.join(PATH_OUTPUT, save_file))
 
 if args.train:
+    early_stopping = EarlyStopping(patience=patience, verbose=True)
     optimizer = optim.Adam(model.parameters())
     model.to(device)
     criterion.to(device)
-    best_val_acc = 0.0
+
     train_losses, train_mac_accs, train_mac_recs, train_mac_pres, train_mac_f1s, train_mac_aucs = [], [], [], [], [], []
     valid_losses, valid_mac_accs, valid_mac_recs, valid_mac_pres, valid_mac_f1s, valid_mac_aucs = [], [], [], [], [], []
 
@@ -186,13 +188,16 @@ if args.train:
         train_mac_aucs.append(train_mac_auc)
         valid_mac_aucs.append(valid_mac_auc)
 
-        # is_best = valid_mac_acc > best_val_acc  # let's keep the model that has the best accuracy, but you can also use another metric.
-        is_best = valid_mac_auc > best_val_acc  # let's keep the model that has the best accuracy, but you can also use another metric.
-        if is_best:
-            # best_val_acc = valid_mac_acc
-            best_val_acc = valid_mac_auc
-            torch.save(model, os.path.join(PATH_OUTPUT, save_file))
+        # early_stopping needs the validation loss to check if it has decresed,
+        # and if it has, it will make a checkpoint of the current model
+        early_stopping(valid_loss, model)
 
+        if early_stopping.early_stop:
+            print("Early stopping")
+            break
+
+    # Save the model. Best model is considered the latest (min loss)
+    torch.save(model, os.path.join(PATH_OUTPUT, save_file))
     plot_learning_curves(train_losses, valid_losses, train_mac_aucs, valid_mac_aucs)
 
 best_model = torch.load(os.path.join(PATH_OUTPUT, save_file))

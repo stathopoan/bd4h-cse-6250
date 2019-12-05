@@ -16,10 +16,11 @@ PATH_OUTPUT = '../models/'
 
 USE_TOP50 = True
 
-NUM_EPOCHS = 10
+NUM_EPOCHS = 20
 BATCH_SIZE = 32
 USE_CUDA = True  # Set 'True' if you want to use GPU
 NUM_WORKERS = 0
+patience = 3 # early stopping patience; how long to wait after last time validation loss improved.
 device = torch.device("cuda" if torch.cuda.is_available() and USE_CUDA else "cpu")
 torch.manual_seed(1)
 if device == "cuda":
