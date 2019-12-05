@@ -44,3 +44,26 @@ class BOWPool(BaseModel):
         x = torch.squeeze(x, 2)
         x = self.final(x)
         return x
+
+class VanillaCNN(BaseModel):
+    def __init__(self, Y, embed_file):
+        num_filters = 100
+        kernel_size = 4
+        super(VanillaCNN, self).__init__(Y, embed_file)
+        self.conv = nn.Conv1d(self.embed_size, num_filters, kernel_size)
+        xavier_uniform_(self.conv.weight)
+        self.embed_drop = nn.Dropout(p=0.5)
+
+        self.final = nn.Linear(num_filters, Y)
+        xavier_uniform_(self.final.weight)
+
+    def forward(self, x):
+        x = self.embed(x)
+        x = self.embed_drop(x)
+        x = x.transpose(1, 2)
+        x = self.conv(x)
+        x = nn.MaxPool1d(x.size()[2])(torch.tanh(x))
+        x = torch.squeeze(x, 2)
+        # linear output
+        x = self.final(x)
+        return x

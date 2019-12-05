@@ -151,6 +151,12 @@ elif args.modeltype == 'rnn':
         model = BOWPool(len(ind2c), PATH_MY_EMBEDDINGS)
     else:
         model = torch.load(os.path.join(PATH_OUTPUT, save_file))
+elif args.modeltype == 'vanilla_cnn':
+    save_file = 'model_vanilla_cnn.pth'
+    if args.train:
+        model = VanillaCNN(len(ind2c), PATH_MY_EMBEDDINGS)
+    else:
+        model = torch.load(os.path.join(PATH_OUTPUT, save_file))
 
 if args.train:
     optimizer = optim.Adam(model.parameters())
