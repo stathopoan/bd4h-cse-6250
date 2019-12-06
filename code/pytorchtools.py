@@ -1,9 +1,11 @@
 import numpy as np
 import torch
 
-#Reference: Copyright (c) 2018 Bjarte Mehus Sunde
+
+# Reference: Copyright (c) 2018 Bjarte Mehus Sunde
 class EarlyStopping:
     """Early stops the training if validation loss doesn't improve after a given patience."""
+
     def __init__(self, patience=7, verbose=False, delta=0):
         """
         Args:

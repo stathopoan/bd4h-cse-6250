@@ -45,6 +45,7 @@ class BOWPool(BaseModel):
         x = self.final(x)
         return x
 
+
 class VanillaCNN(BaseModel):
     def __init__(self, Y, embed_file):
         num_filters = 100

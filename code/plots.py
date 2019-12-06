@@ -14,8 +14,8 @@ def plot_learning_curves(train_losses, valid_losses, train_accuracies, valid_acc
     # TODO: You can save plots as files by codes here or an interactive way according to your preference.
 
     plt.figure()
-    plt.plot(np.arange(len(train_losses)), np.array(train_losses)*0.53, label='Train')
-    plt.plot(np.arange(len(valid_losses)), np.array(valid_losses)*0.53, label='Validation')
+    plt.plot(np.arange(len(train_losses)), np.array(train_losses) * 0.53, label='Train')
+    plt.plot(np.arange(len(valid_losses)), np.array(valid_losses) * 0.53, label='Validation')
     plt.ylabel('Loss')
     plt.xlabel('epoch')
     plt.legend(loc="best")
@@ -99,6 +99,7 @@ def plot_confusion_matrix(results, class_names):
     plt.savefig('plot_cm.png')
     plt.show()
 
+
 # Reference: https://scikit-learn.org/stable/auto_examples/model_selection/plot_roc.html
 def plot_roc_curve(yhat_raw, y):
     if yhat_raw.shape[0] <= 1:
@@ -106,13 +107,13 @@ def plot_roc_curve(yhat_raw, y):
     fpr = {}
     tpr = {}
     roc_auc = {}
-    #get AUC for each label individually
+    # get AUC for each label individually
     relevant_labels = []
     auc_labels = {}
     for i in range(y.shape[1]):
-        #only if there are true positives for this label
-        if y[:,i].sum() > 0:
-            fpr[i], tpr[i], _ = roc_curve(y[:,i], yhat_raw[:,i])
+        # only if there are true positives for this label
+        if y[:, i].sum() > 0:
+            fpr[i], tpr[i], _ = roc_curve(y[:, i], yhat_raw[:, i])
             if len(fpr[i]) > 1 and len(tpr[i]) > 1:
                 auc_score = auc(fpr[i], tpr[i])
                 if not np.isnan(auc_score):

@@ -39,16 +39,6 @@ ind2c, c2ind, desc_dict = load_full_codes(train_val_test_path)
 top_50_codes = pd.read_csv(PATH_TOP50_CODES, header=None)
 top_50_codes.columns = ['codes_50']
 
-# c2ind_filtered = {}
-# count = 0
-# for i in top_50_codes['codes_50'].values:
-#     c2ind_filtered[i] = count
-#     count += 1
-#
-# ind2c_filtered = {}
-# for i, j in c2ind_filtered.items():
-#     ind2c_filtered[j] = i
-
 # read arguments from the command line
 args = parser.parse_args()
 print(args)
@@ -112,47 +102,59 @@ print(args)
 # with open(PATH_LOADERS + "valid_loader.pkl", 'rb') as valid_loader_pkl:
 #     valid_loader = pickle.load(valid_loader_pkl)
 
-df_train = pd.read_csv(path_train_set)
-df_val = pd.read_csv(path_val_set)
-df_test = pd.read_csv(path_test_set)
-train_dataset = WordsWithLabelDataset(df_train, c2ind, w2ind)
-valid_dataset = WordsWithLabelDataset(df_val, c2ind, w2ind)
-test_dataset = WordsWithLabelDataset(df_test, c2ind, w2ind)
-train_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=visit_collate_fn,
-                          num_workers=NUM_WORKERS)
-valid_loader = DataLoader(dataset=valid_dataset, batch_size=BATCH_SIZE, shuffle=False, collate_fn=visit_collate_fn,
-                          num_workers=NUM_WORKERS)
-test_loader = DataLoader(dataset=test_dataset, batch_size=1, shuffle=False, collate_fn=visit_collate_fn,
-                         num_workers=NUM_WORKERS)
 
-if args.modeltype == 'lr':
+if not(args.dataprep):
+    df_train = pd.read_csv(path_train_set)
+    df_val = pd.read_csv(path_val_set)
+    df_test = pd.read_csv(path_test_set)
+    train_dataset = WordsWithLabelDataset(df_train, c2ind, w2ind)
+    valid_dataset = WordsWithLabelDataset(df_val, c2ind, w2ind)
+    test_dataset = WordsWithLabelDataset(df_test, c2ind, w2ind)
+    train_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=visit_collate_fn,
+                              num_workers=NUM_WORKERS)
+    valid_loader = DataLoader(dataset=valid_dataset, batch_size=BATCH_SIZE, shuffle=False, collate_fn=visit_collate_fn,
+                              num_workers=NUM_WORKERS)
+    test_loader = DataLoader(dataset=test_dataset, batch_size=1, shuffle=False, collate_fn=visit_collate_fn,
+                             num_workers=NUM_WORKERS)
+
+    with open(PATH_LOADERS + "train_loader.pkl", 'wb') as train_loader_pkl:
+        pickle.dump(train_loader, train_loader_pkl)
+
+    with open(PATH_LOADERS + "test_loader.pkl", 'wb') as test_loader_pkl:
+        pickle.dump(test_loader, test_loader_pkl)
+
+    with open(PATH_LOADERS + "valid_loader.pkl", 'wb') as valid_loader_pkl:
+        pickle.dump(valid_loader, valid_loader_pkl)
+else:
+    with open(PATH_LOADERS + "train_loader.pkl", 'rb') as train_loader_pkl:
+        train_loader = pickle.load(train_loader_pkl)
+
+    with open(PATH_LOADERS + "test_loader.pkl", 'rb') as test_loader_pkl:
+        test_loader = pickle.load(test_loader_pkl)
+
+    with open(PATH_LOADERS + "valid_loader.pkl", 'rb') as valid_loader_pkl:
+        valid_loader = pickle.load(valid_loader_pkl)
+
+
+if args.modeltype[0] == 'lr':
     save_file = 'model_lr.pth'
     if args.train:
-        # if USE_TOP50:
-        #     model = BOWPool(len(ind2c_filtered), PATH_MY_EMBEDDINGS)
-        # else:
         model = BOWPool(len(ind2c), PATH_MY_EMBEDDINGS)
     else:
         model = torch.load(os.path.join(PATH_OUTPUT, save_file))
-elif args.modeltype == 'cnn':
+elif args.modeltype[0] == 'cnn':
     save_file = 'model_cnn.pth'
     if args.train:
-        # if USE_TOP50:
-        #     model = BOWPool(len(ind2c_filtered), PATH_MY_EMBEDDINGS)
-        # else:
         model = BOWPool(len(ind2c), PATH_MY_EMBEDDINGS)
     else:
         model = torch.load(os.path.join(PATH_OUTPUT, save_file))
-elif args.modeltype == 'rnn':
+elif args.modeltype[0] == 'rnn':
     save_file = 'model_rnn.pth'
     if args.train:
-        # if USE_TOP50:
-        #     model = BOWPool(len(ind2c_filtered), PATH_MY_EMBEDDINGS)
-        # else:
         model = BOWPool(len(ind2c), PATH_MY_EMBEDDINGS)
     else:
         model = torch.load(os.path.join(PATH_OUTPUT, save_file))
-elif args.modeltype == 'vanilla_cnn':
+elif args.modeltype[0] == 'vanilla_cnn':
     save_file = 'model_vanilla_cnn.pth'
     if args.train:
         model = VanillaCNN(len(ind2c), PATH_MY_EMBEDDINGS)
@@ -177,7 +179,7 @@ if args.train:
         valid_mic_acc, valid_mic_rec, valid_mic_pre, valid_mic_f1, valid_mac_auc, _, _ = evaluate(model, device,
                                                                                                   valid_loader,
                                                                                                   criterion,
-                                                                                                  verbose=False)
+                                                                                                  verbose=True)
 
         train_losses.append(train_loss)
         valid_losses.append(valid_loss)
@@ -188,7 +190,7 @@ if args.train:
         train_mac_aucs.append(train_mac_auc)
         valid_mac_aucs.append(valid_mac_auc)
 
-        # early_stopping needs the validation loss to check if it has decresed,
+        # early_stopping needs the validation loss to check if it has decreased,
         # and if it has, it will make a checkpoint of the current model
         early_stopping(valid_loss, model)
 

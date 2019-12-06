@@ -20,7 +20,7 @@ NUM_EPOCHS = 20
 BATCH_SIZE = 32
 USE_CUDA = True  # Set 'True' if you want to use GPU
 NUM_WORKERS = 0
-patience = 3 # early stopping patience; how long to wait after last time validation loss improved.
+patience = 3  # early stopping patience; how long to wait after last time validation loss improved.
 device = torch.device("cuda" if torch.cuda.is_available() and USE_CUDA else "cpu")
 torch.manual_seed(1)
 if device == "cuda":
@@ -33,6 +33,6 @@ optimizer = torch.optim.Adam
 # initiate the parser
 parser = argparse.ArgumentParser()
 parser.add_argument("-dp", "--dataprep", help="run data prep", action="store_true")
-parser.add_argument("-m", "--modeltype", help="choose model type", nargs=1, choices=['lr', 'cnn', 'rnn', 'vanilla_cnn'], default='vanilla_cnn')
+parser.add_argument("-m", "--modeltype", help="choose model type", nargs=1, choices=['lr', 'cnn', 'rnn', 'vanilla_cnn'],
+                    default='vanilla_cnn')
 parser.add_argument("-t", "--train", help="choose train flag", action="store_true")
-
