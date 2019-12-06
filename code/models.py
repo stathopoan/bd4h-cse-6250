@@ -4,6 +4,8 @@ from utils import *
 import torch.nn.functional as F
 from torch.nn.init import xavier_uniform_
 from torch.autograd import Variable
+from math import floor
+from config import *
 
 
 class BaseModel(nn.Module):
@@ -68,3 +70,23 @@ class VanillaCNN(BaseModel):
         # linear output
         x = self.final(x)
         return x
+
+
+class BidirectionalGru(BaseModel):
+    def __init__(self, Y, embed_file):
+        super(BidirectionalGru, self).__init__(Y, embed_file)
+        self.rnn_dim = 512
+        self.num_directions = 2
+        self.num_layers = 1
+        self.rnn = nn.GRU(self.embed_size,
+                          hidden_size=floor(self.rnn_dim / self.num_directions),
+                          num_layers=self.num_layers,
+                          bidirectional=True)
+        self.final = nn.Linear(self.rnn_dim, Y)
+
+    def forward(self, x):
+        embeds = self.embed(x).transpose(0, 1)
+        out, hidden = self.rnn(embeds)
+        last_hidden = hidden[-2:].transpose(0, 1).contiguous().view(BATCH_SIZE, -1)
+        yhat = self.final(last_hidden)
+        return yhat

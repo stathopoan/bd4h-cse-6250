@@ -151,7 +151,7 @@ elif args.modeltype[0] == 'cnn':
 elif args.modeltype[0] == 'rnn':
     save_file = 'model_rnn.pth'
     if args.train:
-        model = BOWPool(len(ind2c), PATH_MY_EMBEDDINGS)
+        model = BidirectionalGru(len(ind2c), PATH_MY_EMBEDDINGS)
     else:
         model = torch.load(os.path.join(PATH_OUTPUT, save_file))
 elif args.modeltype[0] == 'vanilla_cnn':
@@ -174,7 +174,7 @@ if args.train:
         train_loss, train_mac_acc, train_mac_rec, train_mac_pre, train_mac_f1, \
         train_mic_acc, train_mic_rec, train_mic_pre, train_mic_f1, train_mac_auc = train(model, device, train_loader,
                                                                                          criterion, optimizer, epoch,
-                                                                                         verbose=False)
+                                                                                         verbose=True)
         valid_loss, valid_mac_acc, valid_mac_rec, valid_mac_pre, valid_mac_f1, \
         valid_mic_acc, valid_mic_rec, valid_mic_pre, valid_mic_f1, valid_mac_auc, _, _ = evaluate(model, device,
                                                                                                   valid_loader,
