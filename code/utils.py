@@ -455,6 +455,7 @@ def evaluate(model, device, data_loader, criterion, print_freq=10, verbose=True)
     mic_f1 = micro_f1(y_hats.ravel(), y_all.ravel())
     mac_f1 = macro_f1(y_hats, y_all)
     auc_dict = auc_metrics(yhat_raws, y_all, y_all.ravel())
+    prec_at_5 = precision_at_k(yhat_raws, y_all, 5)
     prec_at_8 = precision_at_k(yhat_raws, y_all, 8)
     prec_at_15 = precision_at_k(yhat_raws, y_all, 15)
 
@@ -470,6 +471,7 @@ def evaluate(model, device, data_loader, criterion, print_freq=10, verbose=True)
           'Micro Precision {mic_pre:.3f} \t'
           'Micro F1 {mic_f1:.3f} \t'
           'Micro AUC {auc_micro:.3f} \t'
+          'P@5 {prec_at_5:.3f} \t'
           'P@8 {prec_at_8:.3f} \t'
           'P@15 {prec_at_15:.3f} \t'.format(
         len(data_loader),
@@ -485,6 +487,7 @@ def evaluate(model, device, data_loader, criterion, print_freq=10, verbose=True)
         mic_rec=mic_rec,
         mic_f1=mic_f1,
         auc_micro=auc_dict['auc_micro'],
+        prec_at_5=prec_at_5,
         prec_at_8=prec_at_8,
         prec_at_15=prec_at_15))
 
