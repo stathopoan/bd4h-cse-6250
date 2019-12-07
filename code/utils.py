@@ -237,6 +237,24 @@ def inst_f1(yhat, y):
     f1 = 2 * (prec * rec) / (prec + rec)
     return f1
 
+
+# Reference: https://github.com/jamesmullenbach/caml-mimic/evaluation.py
+def precision_at_k(yhat_raw, y, k):
+    # num true labels in top k predictions / k
+    sortd = np.argsort(yhat_raw)[:, ::-1]
+    topk = sortd[:, :k]
+
+    # get precision at k for each example
+    vals = []
+    for i, tk in enumerate(topk):
+        if len(tk) > 0:
+            num_true_in_top_k = y[i, tk].sum()
+            denom = len(tk)
+            vals.append(num_true_in_top_k / float(denom))
+
+    return np.mean(vals)
+
+
 # Reference: https://github.com/jamesmullenbach/caml-mimic/evaluation.py
 def auc_metrics(yhat_raw, y, ymic):
     if yhat_raw.shape[0] <= 1:
@@ -244,26 +262,26 @@ def auc_metrics(yhat_raw, y, ymic):
     fpr = {}
     tpr = {}
     roc_auc = {}
-    #get AUC for each label individually
+    # get AUC for each label individually
     relevant_labels = []
     auc_labels = {}
     for i in range(y.shape[1]):
-        #only if there are true positives for this label
-        if y[:,i].sum() > 0:
-            fpr[i], tpr[i], _ = roc_curve(y[:,i], yhat_raw[:,i])
+        # only if there are true positives for this label
+        if y[:, i].sum() > 0:
+            fpr[i], tpr[i], _ = roc_curve(y[:, i], yhat_raw[:, i])
             if len(fpr[i]) > 1 and len(tpr[i]) > 1:
                 auc_score = auc(fpr[i], tpr[i])
                 if not np.isnan(auc_score):
                     auc_labels["auc_%d" % i] = auc_score
                     relevant_labels.append(i)
 
-    #macro-AUC: just average the auc scores
+    # macro-AUC: just average the auc scores
     aucs = []
     for i in relevant_labels:
         aucs.append(auc_labels['auc_%d' % i])
     roc_auc['auc_macro'] = np.mean(aucs)
 
-    #micro-AUC: just look at each individual prediction
+    # micro-AUC: just look at each individual prediction
     yhatmic = yhat_raw.ravel()
     fpr["micro"], tpr["micro"], _ = roc_curve(ymic, yhatmic)
     roc_auc["auc_micro"] = auc(fpr["micro"], tpr["micro"])
@@ -437,6 +455,8 @@ def evaluate(model, device, data_loader, criterion, print_freq=10, verbose=True)
     mic_f1 = micro_f1(y_hats.ravel(), y_all.ravel())
     mac_f1 = macro_f1(y_hats, y_all)
     auc_dict = auc_metrics(yhat_raws, y_all, y_all.ravel())
+    prec_at_8 = precision_at_k(yhat_raws, y_all, 8)
+    prec_at_15 = precision_at_k(yhat_raws, y_all, 15)
 
     print('Test: \t'
           'Loss {loss.avg:.4f} \t'
@@ -449,7 +469,9 @@ def evaluate(model, device, data_loader, criterion, print_freq=10, verbose=True)
           'Micro Recall {mic_rec:.3f} \t'
           'Micro Precision {mic_pre:.3f} \t'
           'Micro F1 {mic_f1:.3f} \t'
-          'Micro AUC {auc_micro:.3f} \t'.format(
+          'Micro AUC {auc_micro:.3f} \t'
+          'P@8 {prec_at_8:.3f} \t'
+          'P@15 {prec_at_15:.3f} \t'.format(
         len(data_loader),
         data_time=data_time,
         loss=losses,
@@ -457,14 +479,17 @@ def evaluate(model, device, data_loader, criterion, print_freq=10, verbose=True)
         mac_pre=mac_pre,
         mac_rec=mac_rec,
         mac_f1=mac_f1,
-        mac_auc = auc_dict['auc_macro'],
+        mac_auc=auc_dict['auc_macro'],
         mic_acc=mic_acc,
         mic_pre=mic_pre,
         mic_rec=mic_rec,
         mic_f1=mic_f1,
-        auc_micro=auc_dict['auc_micro']))
+        auc_micro=auc_dict['auc_micro'],
+        prec_at_8=prec_at_8,
+        prec_at_15=prec_at_15))
 
-    return losses.avg, mac_acc, mac_pre, mac_rec, mac_f1, mic_acc, mic_pre, mic_rec, mic_f1, auc_dict['auc_macro'], yhat_raws, y_all
+    return losses.avg, mac_acc, mac_pre, mac_rec, mac_f1, mic_acc, mic_pre, mic_rec, mic_f1, auc_dict[
+        'auc_macro'], yhat_raws, y_all
 
 
 def load_frequency_weights(frequency_labels_path, c2ind):

@@ -18,7 +18,7 @@ USE_TOP50 = True
 
 NUM_EPOCHS = 20
 BATCH_SIZE = 32
-USE_CUDA = False  # Set 'True' if you want to use GPU
+USE_CUDA = True  # Set 'True' if you want to use GPU
 NUM_WORKERS = 0
 patience = 3  # early stopping patience; how long to wait after last time validation loss improved.
 device = torch.device("cuda" if torch.cuda.is_available() and USE_CUDA else "cpu")
