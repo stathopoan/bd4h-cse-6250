@@ -4,7 +4,6 @@ from utils import *
 import torch
 from torch.utils.data import TensorDataset, Dataset
 from torch.utils.data import DataLoader
-# from models import BOWPool
 import torch.optim as optim
 import torch.nn as nn
 from my_datasets import WordsWithLabelDataset, visit_collate_fn
@@ -42,66 +41,6 @@ top_50_codes.columns = ['codes_50']
 # read arguments from the command line
 args = parser.parse_args()
 print(args)
-
-# if args.dataprep:
-#
-#     df_train = pd.read_csv(PATH_TRAIN_SET)
-#     df_val = pd.read_csv(PATH_VAL_SET)
-#     df_test = pd.read_csv(PATH_TEST_SET)
-#
-#     if USE_TOP50:
-#         for i in range(df_train.shape[0]):
-#             df_train.iloc[i, 3] = ";".join(
-#                 set(top_50_codes['codes_50']).intersection(set(df_train.iloc[i, 3].split(";"))))
-#
-#         for i in range(df_val.shape[0]):
-#             df_val.iloc[i, 3] = ";".join(set(top_50_codes['codes_50']).intersection(set(df_val.iloc[i, 3].split(";"))))
-#
-#         for i in range(df_test.shape[0]):
-#             df_test.iloc[i, 3] = ";".join(
-#                 set(top_50_codes['codes_50']).intersection(set(df_test.iloc[i, 3].split(";"))))
-#
-#         df_train_filtered = df_train.loc[~(df_train['LABELS'] == ''), :]
-#         df_val_filtered = df_val.loc[~(df_val['LABELS'] == ''), :]
-#         df_test_filtered = df_test.loc[~(df_test['LABELS'] == ''), :]
-#
-#         train_dataset = WordsWithLabelDataset(df_train_filtered, c2ind_filtered, w2ind)
-#         valid_dataset = WordsWithLabelDataset(df_val_filtered, c2ind_filtered, w2ind)
-#         test_dataset = WordsWithLabelDataset(df_test_filtered, c2ind_filtered, w2ind)
-#
-#     else:
-#
-#         train_dataset = WordsWithLabelDataset(df_train, c2ind, w2ind)
-#         valid_dataset = WordsWithLabelDataset(df_val, c2ind, w2ind)
-#         test_dataset = WordsWithLabelDataset(df_test, c2ind, w2ind)
-#
-#     train_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=visit_collate_fn,
-#                               num_workers=NUM_WORKERS)
-#     valid_loader = DataLoader(dataset=valid_dataset, batch_size=BATCH_SIZE, shuffle=False, collate_fn=visit_collate_fn,
-#                               num_workers=NUM_WORKERS)
-#     test_loader = DataLoader(dataset=test_dataset, batch_size=1, shuffle=False, collate_fn=visit_collate_fn,
-#                              num_workers=NUM_WORKERS)
-#
-#     with open(PATH_LOADERS + "train_loader.pkl", 'wb') as train_loader_pkl:
-#         pickle.dump(train_loader, train_loader_pkl)
-#
-#     with open(PATH_LOADERS + "test_loader.pkl", 'wb') as test_loader_pkl:
-#         pickle.dump(test_loader, test_loader_pkl)
-#
-#     with open(PATH_LOADERS + "valid_loader.pkl", 'wb') as valid_loader_pkl:
-#         pickle.dump(valid_loader, valid_loader_pkl)
-#
-# else:
-#     pass
-# with open(PATH_LOADERS + "train_loader.pkl", 'rb') as train_loader_pkl:
-#     train_loader = pickle.load(train_loader_pkl)
-#
-# with open(PATH_LOADERS + "test_loader.pkl", 'rb') as test_loader_pkl:
-#     test_loader = pickle.load(test_loader_pkl)
-#
-# with open(PATH_LOADERS + "valid_loader.pkl", 'rb') as valid_loader_pkl:
-#     valid_loader = pickle.load(valid_loader_pkl)
-
 
 if not(args.dataprep):
     df_train = pd.read_csv(path_train_set)
