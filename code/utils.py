@@ -328,6 +328,9 @@ def train(model, device, data_loader, criterion, optimizer, epoch, print_freq=10
                                           loss=losses,
                                           f1=f1))
 
+        # if i == 1239:
+        #     print(True)
+
     y_hats = np.concatenate(y_hats, axis=0)
     y_all = np.concatenate(y_all, axis=0)
     yhat_raws = np.concatenate(yhat_raws, axis=0)

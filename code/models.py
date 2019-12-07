@@ -92,3 +92,34 @@ class BidirectionalGru(BaseModel):
         # print(last_hidden.size())
         yhat = self.final(last_hidden)
         return yhat
+
+
+class CNNAttn(BaseModel):
+    def __init__(self, Y, embed_file):
+        num_filters = 50
+        kernel_size = 10
+        super(CNNAttn, self).__init__(Y, embed_file)
+        self.conv = nn.Conv1d(self.embed_size, num_filters, kernel_size, padding=int(floor(kernel_size / 2)))
+        xavier_uniform_(self.conv.weight)
+        self.embed_drop = nn.Dropout(p=0.5)
+
+        self.U = nn.Linear(num_filters, Y)
+        xavier_uniform_(self.U.weight)
+
+        self.final = nn.Linear(num_filters, Y)
+        xavier_uniform_(self.final.weight)
+
+    def forward(self, x):
+        x = self.embed(x)
+        x = self.embed_drop(x)
+        x = x.transpose(1, 2)
+        # apply convolution and nonlinearity (tanh)
+        x = F.tanh(self.conv(x).transpose(1, 2))
+        # apply attention
+        alpha = F.softmax(self.U.weight.matmul(x.transpose(1, 2)), dim=2)
+        # document representations are weighted sums using the attention. Can compute all at once as a matmul
+        m = alpha.matmul(x)
+        # final layer classification
+        y = self.final.weight.mul(m).sum(dim=2).add(self.final.bias)
+
+        return y

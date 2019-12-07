@@ -142,10 +142,10 @@ if args.modeltype[0] == 'lr':
         model = BOWPool(len(ind2c), PATH_MY_EMBEDDINGS)
     else:
         model = torch.load(os.path.join(PATH_OUTPUT, save_file))
-elif args.modeltype[0] == 'cnn':
-    save_file = 'model_cnn.pth'
+elif args.modeltype[0] == 'cnn_attn':
+    save_file = 'model_cnn_attn.pth'
     if args.train:
-        model = BOWPool(len(ind2c), PATH_MY_EMBEDDINGS)
+        model = CNNAttn(len(ind2c), PATH_MY_EMBEDDINGS)
     else:
         model = torch.load(os.path.join(PATH_OUTPUT, save_file))
 elif args.modeltype[0] == 'rnn':
