@@ -87,6 +87,8 @@ class BidirectionalGru(BaseModel):
     def forward(self, x):
         embeds = self.embed(x).transpose(0, 1)
         out, hidden = self.rnn(embeds)
-        last_hidden = hidden[-2:].transpose(0, 1).contiguous().view(BATCH_SIZE, -1)
+        batch_size_current = hidden.shape[1]
+        last_hidden = hidden[-2:].transpose(0, 1).contiguous().view(batch_size_current, -1)
+        # print(last_hidden.size())
         yhat = self.final(last_hidden)
         return yhat
