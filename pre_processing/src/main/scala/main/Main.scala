@@ -60,7 +60,7 @@ object Main {
 //    val filtered_codes: DataFrame = CSVHelper.loadCSVAsTable(spark,"filtered_all_icd9_codes.csv","ALL_CODES")
 //    val filtered_tokenized = CSVHelper.loadCSVAsTable(spark,"discharge_tokenized.csv","SUMMARIES")
     // Aggregate summaries and labels
-    val groupedSummariesDF = Preprocess.aggregateSummariesWithLabels(spark, filtered_tokenized, filtered_codes, false)
+    val groupedSummariesDF = Preprocess.aggregateSummariesWithLabels(spark, filtered_tokenized, filtered_codes, true)
 
 //    val groupedSummariesDF: DataFrame = CSVHelper.loadCSVAsTable(spark,"notes_labeled.csv","NOTES_LABELED")
     // Split to train, val, test set and make sure no patient id is shared among the sets
