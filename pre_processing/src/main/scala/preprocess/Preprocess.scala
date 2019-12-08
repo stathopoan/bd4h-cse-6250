@@ -156,20 +156,20 @@ object Preprocess {
 
     // Prepare for batching by setting the rows with less length first
 
-    var trainDF = groupedSummariesDF.filter(f=>trainPatientIdSet.contains(f.getString(0).toInt))
+    var trainDF = groupedSummariesDF.filter(f=>trainPatientIdSet.contains(f.getInt(0).toInt))
     // Sort by number of words in text
     trainDF = trainDF.withColumn("LENGTH", size(split(col("TEXT")," "))).sort($"LENGTH")
     // Remove redundant column
     trainDF = trainDF.drop("LENGTH")
 
-    var valDF = groupedSummariesDF.filter(f=>valPatientIdSet.contains(f.getString(0).toInt))
+    var valDF = groupedSummariesDF.filter(f=>valPatientIdSet.contains(f.getInt(0).toInt))
     // Sort by number of words in text
     valDF = valDF.withColumn("LENGTH", size(split(col("TEXT")," "))).sort($"LENGTH")
     // Remove redundant column
     valDF = valDF.drop("LENGTH")
 
 
-    var testDF = groupedSummariesDF.filter(f=>testPatientIdSet.contains(f.getString(0).toInt))
+    var testDF = groupedSummariesDF.filter(f=>testPatientIdSet.contains(f.getInt(0).toInt))
     // Sort by number of words in text
     testDF = testDF.withColumn("LENGTH", size(split(col("TEXT")," "))).sort($"LENGTH")
     // Remove redundant column
