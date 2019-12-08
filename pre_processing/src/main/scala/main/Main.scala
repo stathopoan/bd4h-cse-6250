@@ -64,7 +64,7 @@ object Main {
 
 //    val groupedSummariesDF: DataFrame = CSVHelper.loadCSVAsTable(spark,"notes_labeled.csv","NOTES_LABELED")
     // Split to train, val, test set and make sure no patient id is shared among the sets
-    val (trainSplitDF, valSplitDF, testSplitDF ) = Preprocess.splitSummaries(spark, groupedSummariesDF, 0.8, 0.1, 0.1 , false)
+    val (trainSplitDF, valSplitDF, testSplitDF ) = Preprocess.splitSummaries(spark, groupedSummariesDF, 0.8, 0.1, 0.1 , true)
 
 //    val trainSplitDF: DataFrame = CSVHelper.loadCSVAsTable(spark,"train_split.csv","TRAIN_SPLIT")
 //    val valSplitDF: DataFrame = CSVHelper.loadCSVAsTable(spark,"val_split.csv","VAL_SPLIT")
