@@ -71,7 +71,7 @@ object Main {
 //    val testSplitDF: DataFrame = CSVHelper.loadCSVAsTable(spark,"test_split.csv","TEST_SPLIT")
 
 //    val modelW2V = Word2VecModel.load("wordEmeddingsModel") // Use that only if you have saved the model
-//    val modelW2V = Preprocess.pretrainWordEmbeddings(spark,trainSplitDF,true)
+    val modelW2V = Preprocess.pretrainWordEmbeddings(spark,trainSplitDF,true)
 
     // Create text to vectors to fixed length of 100 ready to be parsed
 //    Preprocess.createVectorsWithEmbeddings(spark, modelW2V, trainSplitDF, true, "train.csv")
