@@ -34,5 +34,5 @@ optimizer = torch.optim.Adam
 parser = argparse.ArgumentParser()
 parser.add_argument("-dp", "--dataprep", help="run data prep", action="store_true")
 parser.add_argument("-m", "--modeltype", help="choose model type", nargs=1, choices=['lr', 'cnn_attn', 'rnn', 'vanilla_cnn'],
-                    default='vanilla_cnn')
+                    default='cnn_attn')
 parser.add_argument("-t", "--train", help="choose train flag", action="store_true")
