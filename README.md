@@ -13,3 +13,4 @@ Examples:
 2. For evaluating cnn_attn model type: **python code/main.py -m cnn_attn**
 
 For preprocessing stage you need to copy the tables entitled: DIAGNOSES_ICD.csv, NOTEEVENTS.csv, PROCEDURES_ICD.csv from MIMIC III database into pre_processing\data folder. To start preprocessing please run pre_processing\src\main\scala\main.scala
+Manual work is required to assemble the csvs since duw to multiple workers spark separates the csv creation to different parts.
