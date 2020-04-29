@@ -45,7 +45,7 @@ olefile=0.46=py36_0
 openssl=1.1.1d=he774522_3
 packaging=19.2=py_0
 pandas=0.25.2=py36ha925a31_0
-pillow=6.2.0=py36hdc69c19_0
+pillow=6.2.2=py36hdc69c19_0
 pip=19.3.1=py36_0
 pluggy=0.13.0=py36_0
 py=1.8.0=py36_0
